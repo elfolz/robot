@@ -117,10 +117,10 @@ function initGame() {
 }
 
 function resizeScene() {
-	camera.aspect = window.innerWidth / window.innerHeight
+	camera.aspect = window.visualViewport.width / window.visualViewport.height
 	camera.updateProjectionMatrix()
 	renderer.setPixelRatio(window.devicePixelRatio)
-	renderer.setSize(window.innerWidth, window.innerHeight)
+	renderer.setSize(window.visualViewport.width, window.visualViewport.height)
 	camera.position.z = 2
 }
 
@@ -164,7 +164,6 @@ function speak(text) {
 			voice = speechSynthesis.getVoices().find(_ => _.name.toLocaleLowerCase().includes(el.toLocaleLowerCase()) && _.lang.substring(0, 2).toLocaleLowerCase() == 'pt')
 			if (voice) return true
 		})
-		console.log(voice)
 		if (!voice) return setTimeout(() => speak(text), 100)
 		synth.voice = voice
 	}
@@ -231,15 +230,17 @@ synth.onerror = () => {
 }
 
 window.onresize = () => resizeScene()
+window.visualViewport.onresize = () => resizeScene()
+window.visualViewport.onscroll = () => resizeScene()
 
 document.onreadystatechange = () => {
 	if (document.readyState != 'complete') return
 	loadModel()
-	document.querySelector('#next-animation').onclick = () => {
+	/* document.querySelector('#next-animation').onclick = () => {
 		const i = animationModels.findIndex(el => el == lastAction.name)
 		const index = i < (animationModels.length-1) ? i+1 : 0
 		executeCrossFade(animations[animationModels[index]])
-	}
+	} */
 	document.querySelector('#speak').onclick = () => {
 		if (loading) return
 		talk(document.querySelector('input').value)

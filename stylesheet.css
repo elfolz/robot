@@ -30,12 +30,19 @@ body {
 body.loaded {
 	background: linear-gradient(#fff, #121212, #fff);
 }
+canvas {
+	position: fixed;
+	left: env(safe-area-inset-left, 0);
+	bottom: env(safe-area-inset-bottom, 0);
+	z-index: 0;
+}
 footer {
 	display: flex;
 	position: absolute;
 	left: 50%;
 	bottom: calc(env(safe-area-inset-bottom, 0) + 12px);
 	transform: translateX(-50%);
+	z-index: 1;
 }
 footer main {
 	display: flex;
