@@ -27,7 +27,7 @@ self.addEventListener('fetch', event => {
 function fetchNewData(event, cache, cachedFile) {
 	return fetch(event.request)
 	.then(networkResponse => {
-		if (networkResponse.status == 200) cache.put(event.request, networkResponse.clone())
+		if (event.request.method == 'GET' && networkResponse.status == 200) cache.put(event.request, networkResponse.clone())
 		if (cachedFile && event.clientId) {
 			networkResponse.clone().blob()
 			.then(response => {
