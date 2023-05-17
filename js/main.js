@@ -25,7 +25,7 @@ const scene = new THREE.Scene()
 const controls = new OrbitControls(camera, renderer.domElement)
 const fpsLimit = 1 / 60
 const reader = new FileReader()
-const animationModels = ['acknowledging', 'agreeing', 'clapping', 'defeat', 'disappointed', 'dismissing', 'fistPump', 'formalBow', 'happyWalk', 'hipHopDance', 'idle', 'surprised', 'talking', 'thoughtful', 'walking', 'waving']
+const animationModels = ['acknowledging', 'agreeing', 'clapping', 'defeat', 'disappointed', 'dismissing', 'fistPump', 'formalBow', 'happyIdle', 'happyWalk', 'headGesture', 'hipHopDance', 'idle', 'pouting', 'surprised', 'talking', 'thoughtful', 'walking', 'waving']
 
 const progress = new Proxy({}, {
 	set: function(target, key, value) {
@@ -135,15 +135,25 @@ function animate() {
 	clockDelta = fpsLimit ? clockDelta % fpsLimit : clockDelta
 }
 
-function executeCrossFade(newAction) {
-	if (lastAction == newAction) return
+function executeCrossFade(newAction, loop='repeat') {
+	if (lastAction == newAction) return newAction.reset()
 	newAction.enabled = true
 	newAction.setEffectiveTimeScale(1)
 	newAction.setEffectiveWeight(1)
-	newAction.loop = 'repeat'
+	newAction.loop = loop == 'pingpong' ? THREE.LoopPingPong : loop == 'once' ? THREE.LoopOnce : THREE.LoopRepeat
+	newAction.clampWhenFinished = loop == 'once'
+	if (loop == 'once') newAction.reset()
 	lastAction.crossFadeTo(newAction, 0.25, true)
 	lastAction = newAction
 	newAction.play()
+}
+
+function synchronizeCrossFade(newAction, loop='repeat') {
+	mixer.addEventListener('finished', onLoopFinished)
+	function onLoopFinished() {
+		mixer.removeEventListener('finished', onLoopFinished)
+		executeCrossFade(newAction, loop)
+	}
 }
 
 function speak(text) {
@@ -170,6 +180,7 @@ function speak(text) {
 function talk(text) {
 	if (!text || loading) return
 	loading = true
+	executeCrossFade(animations['thoughtful'], 'once')
 	fetch('https://us-central1-stop-dbb76.cloudfunctions.net/api/chatgpt', {
 		method: 'POST',
 		headers: {'content-type': 'application/json'},
@@ -186,8 +197,36 @@ function talk(text) {
 	.finally(() => {
 		document.querySelector('input').disabled = false
 		document.querySelector('input').value = null
+		document.querySelector('input').focus()
 		loading = false
 	})
+}
+
+function animateTalk() {
+	const talkAnimations = ['agreeing', 'talking', 'acknowledging', 'dismissing', 'headGesture', 'pouting']
+	const talkAnimation = animations[talkAnimations[Math.floor(Math.random() * talkAnimations.length)]]
+	if (lastAction?.name == 'idle') executeCrossFade(talkAnimation, 'once')
+	else synchronizeCrossFade(talkAnimation, 'once')
+}
+
+synth.onboundary = () => {
+	animateTalk()
+}
+synth.onstart = () => {
+	animateTalk()
+}
+synth.onresume = () => {
+	animateTalk()
+}
+synth.onend = () => {
+	executeCrossFade(animations['idle'])
+}
+synth.onpause = () => {
+	executeCrossFade(animations['idle'])
+}
+synth.onerror = () => {
+	speechSynthesis.cancel()
+	executeCrossFade(animations['idle'])
 }
 
 window.onresize = () => resizeScene()
