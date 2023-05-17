@@ -172,6 +172,7 @@ function talk(text) {
 	loading = true
 	fetch('https://us-central1-stop-dbb76.cloudfunctions.net/api/chatgpt', {
 		method: 'POST',
+		headers: {'content-type': 'application/json'},
 		body: JSON.stringify({text: text.trim()})
 	})
 	.then(response => {
