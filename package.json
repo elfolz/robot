@@ -2,7 +2,9 @@
 	"name": "robot",
 	"version": "1.0.0",
 	"scripts": {
-		"serve": "http-server ./ -p 8090 -c-1 -g"
+		"serve": "http-server ./ -p 8090 -c-1 -g",
+		"adb:c": "adb connect 192.168.0.132:42967",
+		"adb:d": "adb disconnect 192.168.0.132:42967"
 	},
 	"devDependencies": {
 		"http-server": "^14.1.1"

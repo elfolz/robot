@@ -160,17 +160,18 @@ function speak(text) {
 	if (!text) return
 	if (!synth.voice) {
 		var voice
-		['Antonio', 'Daniel', 'Eddy'].some(el => {
-			voice = speechSynthesis.getVoices().find(_ => _.name.includes(el) && _.lang.substring(0, 2).toLocaleLowerCase() == 'pt')
+		['antonio', 'daniel', 'eddy', 'brasil'].some(el => {
+			voice = speechSynthesis.getVoices().find(_ => _.name.toLocaleLowerCase().includes(el.toLocaleLowerCase()) && _.lang.substring(0, 2).toLocaleLowerCase() == 'pt')
 			if (voice) return true
 		})
+		console.log(voice)
 		if (!voice) return setTimeout(() => speak(text), 100)
 		synth.voice = voice
 	}
 	speechSynthesis.cancel()
 	synth.lang = synth.voice?.lang ?? 'pt-BR'
 	synth.text = text.trim()
-	if (synth.voice?.name.includes('Daniel')) {
+	if (synth.voice?.name.toLocaleLowerCase().includes('daniel')) {
 		synth.pitch = 1.5
 		synth.rate = 1.5
 	}
