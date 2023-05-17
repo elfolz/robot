@@ -62,6 +62,7 @@ var mixer
 var photo
 var animations = []
 var lastAction
+var loading
 
 reader.onload = e => {
 	photo.src = e.target.result
@@ -149,8 +150,8 @@ function speak(text) {
 	if (!text) return
 	if (!synth.voice) {
 		var voice
-		['Antonio', 'Daniel', 'Brazil'].some(el => {
-			voice = speechSynthesis.getVoices().find(_ => _.name.includes(el))
+		['Antonio', 'Daniel', 'Eddy'].some(el => {
+			voice = speechSynthesis.getVoices().find(_ => _.name.includes(el) && _.lang.substring(0, 2).toLocaleLowerCase() == 'pt')
 			if (voice) return true
 		})
 		if (!voice) return setTimeout(() => speak(text), 100)
@@ -158,10 +159,36 @@ function speak(text) {
 	}
 	speechSynthesis.cancel()
 	synth.lang = synth.voice?.lang ?? 'pt-BR'
-	synth.text = text
-	if (synth.voice?.name.includes('Daniel')) synth.pitch = 1.5
-	synth.rate = 1.5
+	synth.text = text.trim()
+	if (synth.voice?.name.includes('Daniel')) {
+		synth.pitch = 1.5
+		synth.rate = 1.5
+	}
 	speechSynthesis.speak(synth)
+}
+
+function talk(text) {
+	if (!text || loading) return
+	loading = true
+	fetch('https://us-central1-stop-dbb76.cloudfunctions.net/api/chatgpt', {
+		method: 'POST',
+		body: JSON.stringify({
+			model: 'gpt-3.5-turbo', messages: [{role: 'user', content: text.trim()}]
+		})
+	})
+	.then(response => {
+		return response.json()
+	})
+	.then(json => {
+		speak(json.choices[0].message.content)
+	})
+	.catch(e => {
+	})
+	.finally(() => {
+		document.querySelector('input').disabled = false
+		document.querySelector('input').value = null
+		loading = false
+	})
 }
 
 window.onresize = () => resizeScene()
@@ -175,13 +202,14 @@ document.onreadystatechange = () => {
 		executeCrossFade(animations[animationModels[index]])
 	}
 	document.querySelector('#speak').onclick = () => {
-		speak(document.querySelector('input').value?.trim())
-		document.querySelector('input').value = null
+		if (loading) return
+		talk(document.querySelector('input').value)
+		document.querySelector('input').disabled = true
 	}
 	document.querySelector('input').onkeydown = e => {
-		if (e.keyCode != 13) return
-		speak(document.querySelector('input').value?.trim())
-		document.querySelector('input').value = null
+		if (e.keyCode != 13 || loading) return
+		talk(document.querySelector('input').value)
+		document.querySelector('input').disabled = true
 	}
 }
 document.onvisibilitychange = () => {
