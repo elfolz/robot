@@ -148,9 +148,10 @@ function executeCrossFade(newAction) {
 function speak(text) {
 	if (!text) return
 	if (!synth.voice) {
-		const actors = ['Daniel']
-		const voice = speechSynthesis.getVoices().find(el => {
-			return new RegExp(`(${actors.join('|')})`, 'i').test(el.name)
+		var voice
+		['Antonio', 'Daniel', 'Brazil'].some(el => {
+			voice = speechSynthesis.getVoices().find(_ => _.name.includes(el))
+			if (voice) return true
 		})
 		if (!voice) return setTimeout(() => speak(text), 100)
 		synth.voice = voice
@@ -158,7 +159,7 @@ function speak(text) {
 	speechSynthesis.cancel()
 	synth.lang = synth.voice?.lang ?? 'pt-BR'
 	synth.text = text
-	synth.pitch = 1.5
+	if (synth.voice?.name.includes('Daniel')) synth.pitch = 1.5
 	synth.rate = 1.5
 	speechSynthesis.speak(synth)
 }
@@ -175,9 +176,12 @@ document.onreadystatechange = () => {
 	}
 	document.querySelector('#speak').onclick = () => {
 		speak(document.querySelector('input').value?.trim())
+		document.querySelector('input').value = null
 	}
 	document.querySelector('input').onkeydown = e => {
-		if (e.keyCode == 13) speak(document.querySelector('input').value?.trim())
+		if (e.keyCode != 13) return
+		speak(document.querySelector('input').value?.trim())
+		document.querySelector('input').value = null
 	}
 }
 document.onvisibilitychange = () => {
