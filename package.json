@@ -1,0 +1,10 @@
+{
+	"name": "robot",
+	"version": "1.0.0",
+	"scripts": {
+		"serve": "http-server ./ -p 8090 -c-1 -g"
+	},
+	"devDependencies": {
+		"http-server": "^14.1.1"
+	}
+}
