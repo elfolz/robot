@@ -57,6 +57,7 @@ scene.add(dirLight3)
 
 var clockDelta = 0
 var gameStarted = false
+var hasGreeting = false
 var robot
 var mixer
 var photo
@@ -111,7 +112,6 @@ function initGame() {
 	document.body.classList.add('loaded')
 	document.body.removeChild(document.querySelector('figure'))
 	document.querySelector('footer').style.removeProperty('display')
-	speak('Olá humano! Para falar comigo, digite no campo de texto abaixo.')
 	resizeScene()
 	animate()
 }
@@ -160,7 +160,7 @@ function speak(text) {
 	if (!text) return
 	if (!synth.voice) {
 		var voice
-		['antonio', 'daniel', 'eddy', 'brasil'].some(el => {
+		['antonio', 'daniel', 'reed', 'brasil'].some(el => {
 			voice = speechSynthesis.getVoices().find(_ => _.name.toLocaleLowerCase().includes(el.toLocaleLowerCase()) && _.lang.substring(0, 2).toLocaleLowerCase() == 'pt')
 			if (voice) return true
 		})
@@ -180,6 +180,7 @@ function speak(text) {
 function talk(text) {
 	if (!text || loading) return
 	loading = true
+	playAudio()
 	executeCrossFade(animations['thoughtful'], 'once')
 	fetch('https://us-central1-stop-dbb76.cloudfunctions.net/api/chatgpt', {
 		method: 'POST',
@@ -209,24 +210,35 @@ function animateTalk() {
 	else synchronizeCrossFade(talkAnimation, 'once')
 }
 
+function playAudio() {
+	document.querySelector('audio').currentTime = 0
+	document.querySelector('audio').volume = 0.25
+	document.querySelector('audio').play()
+}
+
 synth.onboundary = () => {
 	animateTalk()
 }
 synth.onstart = () => {
+	playAudio()
 	animateTalk()
 }
 synth.onresume = () => {
+	playAudio()
 	animateTalk()
 }
 synth.onend = () => {
 	executeCrossFade(animations['idle'])
+	document.querySelector('audio').pause()
 }
 synth.onpause = () => {
 	executeCrossFade(animations['idle'])
+	document.querySelector('audio').pause()
 }
 synth.onerror = () => {
 	speechSynthesis.cancel()
 	executeCrossFade(animations['idle'])
+	document.querySelector('audio').pause()
 }
 
 window.onresize = () => resizeScene()
@@ -253,6 +265,15 @@ document.onreadystatechange = () => {
 	}
 }
 document.onvisibilitychange = () => {
-	if (document.hidden) speechSynthesis.cancel()
+	if (document.hidden) {
+		speechSynthesis.cancel()
+		document.querySelector('audio').pause()
+	}
+}
+document.onclick = () => {
+	if (!gameStarted || hasGreeting) return
+	playAudio()
+	speak('Olá humano! Para falar comigo, digite no campo de texto abaixo.')
+	hasGreeting = true
 }
 document.body.appendChild(renderer.domElement)
