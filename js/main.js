@@ -212,6 +212,7 @@ function animateTalk() {
 
 function playAudio() {
 	document.querySelector('audio').currentTime = 0
+	document.querySelector('audio').volume = 0.1
 	document.querySelector('audio').play()
 }
 
