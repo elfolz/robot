@@ -172,27 +172,30 @@ function speak(text) {
 function naturalVoice(text) {
 	fetch(`https://us-central1-stop-dbb76.cloudfunctions.net/api/naturalvoice`, {
 		method: 'POST',
-		headers: {'content-type': 'application/ssml+xml'},
 		body: text.trim()
 	})
 	.then(response => {
-		return response.blob()
+		return response.arrayBuffer()
 	})
-	.then(response => {
+	.then(buffer => {
 		if (document.hidden) return
-		playAudio()
-		if (voiceSrc) voiceSrc.disconnect()
-		voiceSrc = audioContext.createBufferSource()
-		voiceSrc.buffer = response
-		voiceSrc.connect(voiceGain)
-		voiceSrc.start(0)
-		voiceSrc.onended = () => {
-			voiceSrc.disconnect()
-			robotSrc?.disconnect()
-			robotSrc = undefined
-		}
+		return audioContext.decodeAudioData(buffer)
+		.then(audioData => {
+			playAudio()
+			if (voiceSrc) voiceSrc.disconnect()
+			voiceSrc = audioContext.createBufferSource()
+			voiceSrc.buffer = audioData
+			voiceSrc.connect(voiceGain)
+			voiceSrc.start(0)
+			voiceSrc.onended = () => {
+				voiceSrc.disconnect()
+				robotSrc?.disconnect()
+				robotSrc = undefined
+			}
+		})
 	})
 	.catch(error => {
+		console.log(error)
 		localVoice(text)
 	})
 }
@@ -306,16 +309,16 @@ synth.onresume = () => {
 }
 synth.onend = () => {
 	executeCrossFade(animations['idle'])
-	document.querySelector('audio').pause()
+	robotSrc?.disconnect()
 }
 synth.onpause = () => {
 	executeCrossFade(animations['idle'])
-	document.querySelector('audio').pause()
+	robotSrc?.disconnect()
 }
 synth.onerror = () => {
 	speechSynthesis.cancel()
 	executeCrossFade(animations['idle'])
-	document.querySelector('audio').pause()
+	robotSrc?.disconnect()
 }
 
 window.onresize = () => resizeScene()
