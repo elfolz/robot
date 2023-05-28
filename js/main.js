@@ -192,6 +192,7 @@ function naturalVoice(text) {
 				robotSrc?.disconnect()
 				robotSrc = undefined
 			}
+			animateTalk()
 		})
 	})
 	.catch(error => {
