@@ -158,7 +158,7 @@ function executeCrossFade(newAction, loop='repeat') {
 		mixer.addEventListener('finished', onLoopFinished)
 		function onLoopFinished() {
 			mixer.removeEventListener('finished', onLoopFinished)
-			talkAnimation()
+			animateTalk(true)
 		}
 	}
 }
@@ -173,6 +173,7 @@ function synchronizeCrossFade(newAction, loop='repeat') {
 
 function speak(text) {
 	if (!text) return
+	executeCrossFade(animations['thoughtful'], 'once')
 	if (/edg/i.test(navigator.userAgent)) return localVoice(text)
 	naturalVoice(text)
 }
@@ -207,7 +208,6 @@ function naturalVoice(text) {
 		})
 	})
 	.catch(error => {
-		console.log(error)
 		localVoice(text)
 	})
 }
@@ -236,7 +236,6 @@ function talk(text) {
 	if (!text || loading) return
 	loading = true
 	playRobotAudio()
-	executeCrossFade(animations['thoughtful'], 'once')
 	fetch('https://us-central1-stop-dbb76.cloudfunctions.net/api/chatgpt', {
 		method: 'POST',
 		headers: {'content-type': 'application/json'},
@@ -264,11 +263,11 @@ function talk(text) {
 	})
 }
 
-function animateTalk() {
+function animateTalk(force) {
 	const talkAnimations = ['agreeing', 'talking', 'acknowledging', 'dismissing', 'headGesture', 'pouting']
 	if (talkAnimations.includes(lastAction?.name)) talkAnimations.splice(talkAnimations.findIndex(el => el == lastAction.name), 1)
 	const talkAnimation = animations[talkAnimations[Math.floor(Math.random() * talkAnimations.length)]]
-	if (lastAction?.name == 'idle') executeCrossFade(talkAnimation, 'once')
+	if (force || lastAction?.name == 'idle') executeCrossFade(talkAnimation, 'once')
 	else synchronizeCrossFade(talkAnimation, 'once')
 }
 
