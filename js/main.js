@@ -64,6 +64,13 @@ var photo
 var animations = []
 var lastAction
 var loading
+var audioContext
+var destination
+var voiceGain
+var robotGain
+var voiceSrc
+var robotSrc
+var robotBuffer
 
 reader.onload = e => {
 	photo.src = e.target.result
@@ -158,6 +165,39 @@ function synchronizeCrossFade(newAction, loop='repeat') {
 
 function speak(text) {
 	if (!text) return
+	if (/edg/i.test(navigator.userAgent)) return localVoice(text)
+	naturalVoice(text)
+}
+
+function naturalVoice(text) {
+	fetch(`https://us-central1-stop-dbb76.cloudfunctions.net/api/naturalvoice`, {
+		method: 'POST',
+		headers: {'content-type': 'application/ssml+xml'},
+		body: text.trim()
+	})
+	.then(response => {
+		return response.blob()
+	})
+	.then(response => {
+		if (document.hidden) return
+		playAudio()
+		if (voiceSrc) voiceSrc.disconnect()
+		voiceSrc = audioContext.createBufferSource()
+		voiceSrc.buffer = response
+		voiceSrc.connect(voiceGain)
+		voiceSrc.start(0)
+		voiceSrc.onended = () => {
+			voiceSrc.disconnect()
+			robotSrc?.disconnect()
+			robotSrc = undefined
+		}
+	})
+	.catch(error => {
+		localVoice(text)
+	})
+}
+
+function localVoice(text) {
 	if (!synth.voice) {
 		var voice
 		['antonio', 'daniel', 'reed', 'brasil'].some(el => {
@@ -194,6 +234,10 @@ function talk(text) {
 		speak(json.choices[0].message.content)
 	})
 	.catch(e => {
+		speechSynthesis.stop()
+		voiceSrc?.disconnect()
+		robotSrc?.disconnect()
+
 	})
 	.finally(() => {
 		document.querySelector('input').disabled = false
@@ -210,10 +254,43 @@ function animateTalk() {
 	else synchronizeCrossFade(talkAnimation, 'once')
 }
 
-function playAudio() {
-	document.querySelector('audio').currentTime = 0
-	document.querySelector('audio').volume = 0.1
+function initAudio() {
+	audioContext = new AudioContext()
+	voiceGain = audioContext.createGain()
+	robotGain = audioContext.createGain()
+	robotGain.gain.value = 0.25
+	destination = audioContext.createMediaStreamDestination()
+	voiceGain.connect(audioContext.destination)
+	robotGain.connect(audioContext.destination)
+	document.querySelector('audio').srcObject = destination.stream
 	document.querySelector('audio').play()
+	fetch(`./audio/robot.mp3`)
+	.then(response => {
+		return response.blob()
+	})
+	.then(response => {
+		response.arrayBuffer()
+		.then(buffer => {
+			audioContext.decodeAudioData(buffer)
+			.then(response => {
+				robotBuffer = response
+			})
+		})
+	})
+}
+
+function playAudio() {
+	if (!audioContext || !robotBuffer) return
+	if (robotSrc) robotSrc.disconnect()
+	robotSrc = audioContext.createBufferSource()
+	robotSrc.buffer = robotBuffer
+	robotSrc.loop = true
+	robotSrc.connect(robotGain)
+	robotSrc.start(0)
+	robotSrc.onended = () => {
+		robotSrc?.disconnect()
+		robotSrc = undefined
+	}
 }
 
 synth.onboundary = () => {
@@ -248,11 +325,6 @@ window.visualViewport.onscroll = () => resizeScene()
 document.onreadystatechange = () => {
 	if (document.readyState != 'complete') return
 	loadModel()
-	/* document.querySelector('#next-animation').onclick = () => {
-		const i = animationModels.findIndex(el => el == lastAction.name)
-		const index = i < (animationModels.length-1) ? i+1 : 0
-		executeCrossFade(animations[animationModels[index]])
-	} */
 	document.querySelector('#speak').onclick = () => {
 		if (loading) return
 		talk(document.querySelector('input').value)
@@ -265,13 +337,16 @@ document.onreadystatechange = () => {
 	}
 }
 document.onvisibilitychange = () => {
-	if (document.hidden) {
-		speechSynthesis.cancel()
-		document.querySelector('audio').pause()
-	}
+	if (!document.hidden) return
+	voiceSrc?.disconnect()
+	robotSrc?.disconnect()
+	speechSynthesis.cancel()
+	document.querySelector('input').value = null
+	document.querySelector('input').disabled = false
 }
 document.onclick = () => {
 	if (!gameStarted || hasGreeting) return
+	initAudio()
 	playAudio()
 	speak('Olá humano! Para falar comigo, digite no campo de texto abaixo.')
 	hasGreeting = true
