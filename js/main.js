@@ -58,6 +58,7 @@ scene.add(dirLight3)
 var clockDelta = 0
 var gameStarted = false
 var hasGreeting = false
+var isTalking = false
 var robot
 var mixer
 var photo
@@ -153,6 +154,13 @@ function executeCrossFade(newAction, loop='repeat') {
 	lastAction.crossFadeTo(newAction, 0.25, true)
 	lastAction = newAction
 	newAction.play()
+	if (isTalking) {
+		mixer.addEventListener('finished', onLoopFinished)
+		function onLoopFinished() {
+			mixer.removeEventListener('finished', onLoopFinished)
+			talkAnimation()
+		}
+	}
 }
 
 function synchronizeCrossFade(newAction, loop='repeat') {
@@ -181,18 +189,21 @@ function naturalVoice(text) {
 		if (document.hidden) return
 		return audioContext.decodeAudioData(buffer)
 		.then(audioData => {
-			playAudio()
+			isTalking = true
+			playRobotAudio()
+			animateTalk()
 			if (voiceSrc) voiceSrc.disconnect()
 			voiceSrc = audioContext.createBufferSource()
 			voiceSrc.buffer = audioData
 			voiceSrc.connect(voiceGain)
 			voiceSrc.start(0)
 			voiceSrc.onended = () => {
+				isTalking = false
 				voiceSrc.disconnect()
 				robotSrc?.disconnect()
 				robotSrc = undefined
+				executeCrossFade(animations['idle'])
 			}
-			animateTalk()
 		})
 	})
 	.catch(error => {
@@ -224,7 +235,7 @@ function localVoice(text) {
 function talk(text) {
 	if (!text || loading) return
 	loading = true
-	playAudio()
+	playRobotAudio()
 	executeCrossFade(animations['thoughtful'], 'once')
 	fetch('https://us-central1-stop-dbb76.cloudfunctions.net/api/chatgpt', {
 		method: 'POST',
@@ -238,9 +249,11 @@ function talk(text) {
 		speak(json.choices[0].message.content)
 	})
 	.catch(e => {
-		speechSynthesis.stop()
+		isTalking = false
+		speechSynthesis.cancel()
 		voiceSrc?.disconnect()
 		robotSrc?.disconnect()
+		executeCrossFade(animations['idle'])
 
 	})
 	.finally(() => {
@@ -253,6 +266,7 @@ function talk(text) {
 
 function animateTalk() {
 	const talkAnimations = ['agreeing', 'talking', 'acknowledging', 'dismissing', 'headGesture', 'pouting']
+	if (talkAnimations.includes(lastAction?.name)) talkAnimations.splice(talkAnimations.findIndex(el => el == lastAction.name), 1)
 	const talkAnimation = animations[talkAnimations[Math.floor(Math.random() * talkAnimations.length)]]
 	if (lastAction?.name == 'idle') executeCrossFade(talkAnimation, 'once')
 	else synchronizeCrossFade(talkAnimation, 'once')
@@ -283,7 +297,7 @@ function initAudio() {
 	})
 }
 
-function playAudio() {
+function playRobotAudio() {
 	if (!audioContext || !robotBuffer) return
 	if (robotSrc) robotSrc.disconnect()
 	robotSrc = audioContext.createBufferSource()
@@ -301,22 +315,25 @@ synth.onboundary = () => {
 	animateTalk()
 }
 synth.onstart = () => {
-	playAudio()
+	playRobotAudio()
 	animateTalk()
 }
 synth.onresume = () => {
-	playAudio()
+	playRobotAudio()
 	animateTalk()
 }
 synth.onend = () => {
+	isTalking = false
 	executeCrossFade(animations['idle'])
 	robotSrc?.disconnect()
 }
 synth.onpause = () => {
+	isTalking = false
 	executeCrossFade(animations['idle'])
 	robotSrc?.disconnect()
 }
 synth.onerror = () => {
+	isTalking = false
 	speechSynthesis.cancel()
 	executeCrossFade(animations['idle'])
 	robotSrc?.disconnect()
@@ -342,16 +359,17 @@ document.onreadystatechange = () => {
 }
 document.onvisibilitychange = () => {
 	if (!document.hidden) return
+	isTalking = false
 	voiceSrc?.disconnect()
 	robotSrc?.disconnect()
 	speechSynthesis.cancel()
+	executeCrossFade(animations['idle'])
 	document.querySelector('input').value = null
 	document.querySelector('input').disabled = false
 }
 document.onclick = () => {
 	if (!gameStarted || hasGreeting) return
 	initAudio()
-	playAudio()
 	speak('Olá humano! Para falar comigo, digite no campo de texto abaixo.')
 	hasGreeting = true
 }
