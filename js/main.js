@@ -253,7 +253,7 @@ function talk(text) {
 		voiceSrc?.disconnect()
 		robotSrc?.disconnect()
 		executeCrossFade(animations['idle'])
-
+		console.log(e)
 	})
 	.finally(() => {
 		document.querySelector('input').disabled = false
